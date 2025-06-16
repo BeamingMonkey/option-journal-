@@ -1,22 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Option Trading Journal</title>
+    <style>
+        /* Reset some default browser styles */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            align-items: center;
+        }
+
+        .container {
+            background: #fff;
+            max-width: 450px;
+            width: 100%;
+            padding: 30px 40px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 25px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 18px;
+            border: 1.8px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: border-color 0.3s ease;
+            resize: vertical;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #3b82f6; /* nice blue */
+            box-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
+        }
+
+        textarea {
+            min-height: 80px;
+        }
+
+        input[type="submit"] {
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 700;
+            border: none;
+            padding: 14px;
+            width: 100%;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #2563eb;
+        }
+
+        .view-trades {
+            display: block;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: 600;
+            text-decoration: none;
+            color: #3b82f6;
+            transition: color 0.3s ease;
+        }
+
+        .view-trades:hover {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
-    <h1>Log a Trade</h1>
-    <form action="/submit" method="POST">
-        <label>Symbol:</label><br>
-        <input type="text" name="symbol"><br>
-        <label>Entry Price:</label><br>
-        <input type="number" name="entry" step="0.01"><br>
-        <label>Exit Price:</label><br>
-        <input type="number" name="exit" step="0.01"><br>
-        <label>Reason:</label><br>
-        <textarea name="reason"></textarea><br><br>
-        <input type="submit" value="Save Trade">
-    </form>
-    <br>
-    <a href="/trades">View Past Trades</a>
+    <div class="container">
+        <h1>Log a Trade</h1>
+        <form action="/submit" method="POST">
+            <label for="symbol">Symbol:</label>
+            <input type="text" id="symbol" name="symbol" required placeholder="e.g. AAPL" />
+
+            <label for="entry">Entry Price:</label>
+            <input type="number" id="entry" name="entry" step="0.01" required placeholder="e.g. 150.00" />
+
+            <label for="exit">Exit Price:</label>
+            <input type="number" id="exit" name="exit" step="0.01" required placeholder="e.g. 155.00" />
+
+            <label for="reason">Reason:</label>
+            <textarea id="reason" name="reason" placeholder="Why did you enter this trade?" required></textarea>
+
+            <input type="submit" value="Save Trade" />
+        </form>
+        <a href="/trades" class="view-trades">View Past Trades</a>
+    </div>
 </body>
 </html>
