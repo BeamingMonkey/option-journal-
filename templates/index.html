@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Option Trading Journal</title>
+</head>
+<body>
+    <h1>Log a Trade</h1>
+    <form action="/submit" method="POST">
+        <label>Symbol:</label><br>
+        <input type="text" name="symbol"><br>
+        <label>Entry Price:</label><br>
+        <input type="number" name="entry" step="0.01"><br>
+        <label>Exit Price:</label><br>
+        <input type="number" name="exit" step="0.01"><br>
+        <label>Reason:</label><br>
+        <textarea name="reason"></textarea><br><br>
+        <input type="submit" value="Save Trade">
+    </form>
+    <br>
+    <a href="/trades">View Past Trades</a>
+</body>
+</html>
