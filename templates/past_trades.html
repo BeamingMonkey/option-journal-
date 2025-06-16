@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Past Trades{% endblock %}
+{% block content %}
+<h2>Past Trades</h2>
+<a href="/">Log New Trade</a> |
+<a href="/logout">Logout</a>
+<br><br>
+<table border="1">
+    <tr>
+        <th>Symbol</th>
+        <th>Entry</th>
+        <th>Exit</th>
+        <th>Reason</th>
+        <th>Timestamp</th>
+        <th>PnL</th>
+    </tr>
+    {% for trade in trades %}
+    <tr>
+        <td>{{ trade[0] }}</td>
+        <td>{{ trade[1] }}</td>
+        <td>{{ trade[2] }}</td>
+        <td>{{ trade[3] }}</td>
+        <td>{{ trade[4] }}</td>
+        <td class="{{ 'profit' if trade[5] >= 0 else 'loss' }}">{{ '%.2f'|format(trade[5]) }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
