@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register - Option Trading Journal</title>
+</head>
+<body>
+    <h1>Register</h1>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul style="color:red;">
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    <form method="POST" action="/register">
+        <label>Username:</label><br>
+        <input type="text" name="username" required><br>
+        <label>Email:</label><br>
+        <input type="email" name="email" required><br>
+        <label>Password:</label><br>
+        <input type="password" name="password" required><br><br>
+        <input type="submit" value="Register">
+    </form>
+    <p>Already have an account? <a href="/login">Login here</a>.</p>
+    <p><a href="/">Back to Home</a></p>
+</body>
+</html>
