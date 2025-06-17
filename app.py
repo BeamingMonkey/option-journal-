@@ -1,7 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import sqlite3
-import os
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -10,7 +9,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# User class for Flask-Login
+# User class
 class User(UserMixin):
     def __init__(self, id):
         self.id = id
@@ -19,7 +18,7 @@ class User(UserMixin):
 def load_user(user_id):
     return User(user_id)
 
-# DB Setup
+# DB setup
 def init_db():
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
@@ -35,10 +34,10 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
                 symbol TEXT NOT NULL,
-                currency TEXT NOT NULL,
-                quantity INTEGER NOT NULL,
                 entry REAL NOT NULL,
                 exit REAL NOT NULL,
+                qty INTEGER NOT NULL,
+                currency TEXT NOT NULL,
                 reason TEXT,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id)
@@ -92,19 +91,18 @@ def logout():
 @login_required
 def log_trade():
     symbol = request.form['symbol']
-    currency = request.form['currency']
-    quantity = int(request.form['quantity'])
     entry = float(request.form['entry'])
     exit_price = float(request.form['exit'])
+    qty = int(request.form['qty'])
+    currency = request.form['currency']
     reason = request.form['reason']
     user_id = current_user.id
 
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
-        c.execute('''
-            INSERT INTO trades (user_id, symbol, currency, quantity, entry, exit, reason)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (user_id, symbol, currency, quantity, entry, exit_price, reason))
+        c.execute('''INSERT INTO trades (user_id, symbol, entry, exit, qty, currency, reason) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                  (user_id, symbol, entry, exit_price, qty, currency, reason))
         conn.commit()
     return redirect('/past')
 
@@ -114,12 +112,11 @@ def past_trades():
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
         c.execute('''
-            SELECT symbol, currency, quantity, entry, exit, reason, timestamp,
-                   (exit - entry) * quantity AS pnl
-            FROM trades
-            WHERE user_id = ?
-            ORDER BY timestamp DESC
-        ''', (current_user.id,))
+            SELECT symbol, entry, exit, qty, currency, reason, timestamp, 
+                   ROUND((exit - entry) * qty, 2) AS pnl 
+            FROM trades 
+            WHERE user_id = ? 
+            ORDER BY timestamp DESC''', (current_user.id,))
         trades = c.fetchall()
     return render_template('past_trades.html', trades=trades)
 
