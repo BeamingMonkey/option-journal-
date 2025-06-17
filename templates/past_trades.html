@@ -10,6 +10,8 @@
         <th>Symbol</th>
         <th>Entry</th>
         <th>Exit</th>
+        <th>Currency</th>
+        <th>Quality</th>
         <th>Reason</th>
         <th>Timestamp</th>
         <th>PnL</th>
@@ -21,7 +23,9 @@
         <td>{{ trade[2] }}</td>
         <td>{{ trade[3] }}</td>
         <td>{{ trade[4] }}</td>
-        <td class="{{ 'profit' if trade[5] >= 0 else 'loss' }}">{{ '%.2f'|format(trade[5]) }}</td>
+        <td>{{ trade[5] }}</td>
+        <td>{{ trade[6] }}</td>
+        <td class="{{ 'profit' if trade[7] >= 0 else 'loss' }}">{{ '%.2f'|format(trade[7]) }}</td>
     </tr>
     {% endfor %}
 </table>
