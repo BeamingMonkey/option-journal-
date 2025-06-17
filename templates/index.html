@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Log New Trade - My Trading Journal</title>
+    <style>
+        body {
+            background: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            padding: 30px 40px;
+            margin: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            max-width: 450px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #222;
+            font-weight: 700;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #333;
+        }
+        input[type="text"], input[type="number"], textarea, select {
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1.5px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+            resize: vertical;
+        }
+        textarea {
+            min-height: 80px;
+        }
+        button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2563eb;
+        }
+        a {
+            display: block;
+            margin-top: 15px;
+            text-align: center;
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Log New Trade</h1>
+        <form action="/log" method="POST">
+            <label for="symbol">Symbol</label>
+            <input type="text" id="symbol" name="symbol" required placeholder="e.g. AAPL" />
+
+            <label for="currency">Currency</label>
+            <select id="currency" name="currency" required>
+                <option value="USD">USD - US Dollar</option>
+                <option value="EUR">EUR - Euro</option>
+                <option value="INR">INR - Indian Rupee</option>
+                <option value="GBP">GBP - British Pound</option>
+                <option value="JPY">JPY - Japanese Yen</option>
+                <option value="AUD">AUD - Australian Dollar</option>
+            </select>
+
+            <label for="quantity">Quantity</label>
+            <input type="number" id="quantity" name="quantity" min="1" required placeholder="Number of shares/contracts" />
+
+            <label for="entry">Entry Price</label>
+            <input type="number" step="0.01" id="entry" name="entry" required placeholder="e.g. 135.50" />
+
+            <label for="exit">Exit Price</label>
+            <input type="number" step="0.01" id="exit" name="exit" required placeholder="e.g. 140.75" />
+
+            <label for="reason">Reason</label>
+            <textarea id="reason" name="reason" placeholder="Why did you take this trade?"></textarea>
+
+            <button type="submit">Submit Trade</button>
+        </form>
+        <a href="/past">View Past Trades</a>
+    </div>
+</body>
+</html>
