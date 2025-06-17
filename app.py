@@ -35,6 +35,8 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
                 symbol TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                quantity INTEGER NOT NULL,
                 entry REAL NOT NULL,
                 exit REAL NOT NULL,
                 reason TEXT,
@@ -90,6 +92,8 @@ def logout():
 @login_required
 def log_trade():
     symbol = request.form['symbol']
+    currency = request.form['currency']
+    quantity = int(request.form['quantity'])
     entry = float(request.form['entry'])
     exit_price = float(request.form['exit'])
     reason = request.form['reason']
@@ -97,8 +101,10 @@ def log_trade():
 
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
-        c.execute('INSERT INTO trades (user_id, symbol, entry, exit, reason) VALUES (?, ?, ?, ?, ?)',
-                  (user_id, symbol, entry, exit_price, reason))
+        c.execute('''
+            INSERT INTO trades (user_id, symbol, currency, quantity, entry, exit, reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, symbol, currency, quantity, entry, exit_price, reason))
         conn.commit()
     return redirect('/past')
 
@@ -107,10 +113,15 @@ def log_trade():
 def past_trades():
     with sqlite3.connect('database.db') as conn:
         c = conn.cursor()
-        c.execute('SELECT symbol, entry, exit, reason, timestamp, (exit - entry) AS pnl FROM trades WHERE user_id = ? ORDER BY timestamp DESC', (current_user.id,))
+        c.execute('''
+            SELECT symbol, currency, quantity, entry, exit, reason, timestamp,
+                   (exit - entry) * quantity AS pnl
+            FROM trades
+            WHERE user_id = ?
+            ORDER BY timestamp DESC
+        ''', (current_user.id,))
         trades = c.fetchall()
     return render_template('past_trades.html', trades=trades)
 
 if __name__ == '__main__':
     app.run(debug=True)
-
