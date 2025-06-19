@@ -1,7 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
 {% block content %}
-  <h2>Hello, {{ current_user.username }}</h2>
-  <p><a href="{{ url_for('log_trade') }}">Log a new trade</a></p>
-  <p><a href="{{ url_for('past_trades') }}">View past trades</a></p>
+<h2>📊 Dashboard</h2>
+<div class="row row-cols-1 row-cols-md-4 g-3 mt-3">
+  <div class="col"><div class="card text-center shadow-sm p-3"><h6>Total PnL</h6><h3>{{ stats.total_pnl }}</h3></div></div>
+  <div class="col"><div class="card text-center shadow-sm p-3"><h6>Best Trade</h6><h3>{{ stats.best_trade }}</h3></div></div>
+  <div class="col"><div class="card text-center shadow-sm p-3"><h6>Worst Trade</h6><h3>{{ stats.worst_trade }}</h3></div></div>
+  <div class="col"><div class="card text-center shadow-sm p-3"><h6>Total Trades</h6><h3>{{ stats.total_trades }}</h3></div></div>
+</div>
 {% endblock %}
