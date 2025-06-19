@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, R
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
-import psycopg2
+import psycopg  # updated import
 import os
 import csv
 from io import StringIO
@@ -14,15 +14,12 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-# Get database URL from environment
+# Database connection using DATABASE_URL
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_db():
-    try:
-        return psycopg2.connect(DATABASE_URL, sslmode='require')
-    except Exception as e:
-        app.logger.error(f"Database connection error: {e}")
-        raise
+    # Use psycopg.connect with sslmode 'require'
+    return psycopg.connect(DATABASE_URL, sslmode='require')
 
 # --- User Class ---
 class User(UserMixin):
@@ -34,9 +31,9 @@ class User(UserMixin):
     @staticmethod
     def get(user_id):
         conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT id, username, password FROM users WHERE id = %s", (user_id,))
-        row = cur.fetchone()
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, username, password FROM users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
         conn.close()
         if row:
             return User(*row)
@@ -45,9 +42,9 @@ class User(UserMixin):
     @staticmethod
     def find_by_username(username):
         conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT id, username, password FROM users WHERE username = %s", (username,))
-        row = cur.fetchone()
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, username, password FROM users WHERE username = %s", (username,))
+            row = cur.fetchone()
         conn.close()
         if row:
             return User(*row)
@@ -77,8 +74,8 @@ def register():
         password_hash = generate_password_hash(password)
         try:
             conn = get_db()
-            cur = conn.cursor()
-            cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password_hash))
+            with conn.cursor() as cur:
+                cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password_hash))
             conn.commit()
             conn.close()
             return redirect(url_for("login"))
@@ -119,11 +116,11 @@ def log_trade():
         pnl = round((exit_price - entry) * qty, 2)
 
         conn = get_db()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO trades (user_id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (current_user.id, symbol, entry, exit_price, qty, currency, reason, timestamp, pnl, strategy))
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO trades (user_id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (current_user.id, symbol, entry, exit_price, qty, currency, reason, timestamp, pnl, strategy))
         conn.commit()
         conn.close()
         return redirect(url_for("past_trades"))
@@ -168,16 +165,16 @@ def past_trades():
     base_query = f"FROM trades WHERE {where_clause}"
 
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute(f"SELECT COUNT(*) {base_query}", tuple(values))
-    total_trades = cur.fetchone()[0]
+    with conn.cursor() as cur:
+        cur.execute(f"SELECT COUNT(*) {base_query}", tuple(values))
+        total_trades = cur.fetchone()[0]
 
-    cur.execute(f"""
-        SELECT id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy
-        {base_query}
-        ORDER BY timestamp DESC LIMIT %s OFFSET %s
-    """, tuple(values + [per_page, offset]))
-    trades = cur.fetchall()
+        cur.execute(f"""
+            SELECT id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy
+            {base_query}
+            ORDER BY timestamp DESC LIMIT %s OFFSET %s
+        """, tuple(values + [per_page, offset]))
+        trades = cur.fetchall()
     conn.close()
 
     total_pages = (total_trades + per_page - 1) // per_page
@@ -188,9 +185,11 @@ def past_trades():
 @login_required
 def export_csv():
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy FROM trades WHERE user_id = %s", (current_user.id,))
-    trades = cur.fetchall()
+    with conn.cursor() as cur:
+        cur.execute("SELECT symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy FROM trades WHERE user_id = %s", (current_user.id,))
+        trades = cur.fetchall()
+    conn.close()
+
     output = StringIO()
     writer = csv.writer(output)
     writer.writerow(["Symbol", "Entry", "Exit", "Qty", "Currency", "Reason", "Timestamp", "PnL", "Strategy"])
@@ -203,16 +202,16 @@ def export_csv():
 @login_required
 def dashboard():
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT 
-            COALESCE(SUM(pnl), 0),
-            COALESCE(MAX(pnl), 0),
-            COALESCE(MIN(pnl), 0),
-            COUNT(*)
-        FROM trades WHERE user_id = %s
-    """, (current_user.id,))
-    total_pnl, best_trade, worst_trade, total_trades = cur.fetchone()
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT 
+                COALESCE(SUM(pnl), 0),
+                COALESCE(MAX(pnl), 0),
+                COALESCE(MIN(pnl), 0),
+                COUNT(*)
+            FROM trades WHERE user_id = %s
+        """, (current_user.id,))
+        total_pnl, best_trade, worst_trade, total_trades = cur.fetchone()
     conn.close()
 
     stats = {
@@ -226,29 +225,29 @@ def dashboard():
 # --- Initialize DB ---
 def init_db():
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS trades (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id),
-            symbol TEXT,
-            entry REAL,
-            exit REAL,
-            qty INTEGER,
-            currency TEXT,
-            reason TEXT,
-            timestamp TIMESTAMP,
-            pnl REAL,
-            strategy TEXT
-        )
-    """)
+    with conn.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS trades (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                symbol TEXT,
+                entry REAL,
+                exit REAL,
+                qty INTEGER,
+                currency TEXT,
+                reason TEXT,
+                timestamp TIMESTAMP,
+                pnl REAL,
+                strategy TEXT
+            )
+        """)
     conn.commit()
     conn.close()
 
@@ -257,5 +256,4 @@ with app.app_context():
     init_db()
 
 if __name__ == "__main__":
-    debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
-    app.run(debug=debug_mode)
+    app.run(debug=True)
