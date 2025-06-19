@@ -1,17 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Register{% endblock %}
 {% block content %}
-<h2>Register</h2>
-<form method="POST">
-  <div class="mb-3">
-    <input type="text" class="form-control" name="username" placeholder="Username" required />
-  </div>
-  <div class="mb-3">
-    <input type="password" class="form-control" name="password" placeholder="Password" required />
-  </div>
-  <div class="mb-3">
-    <input type="password" class="form-control" name="confirm" placeholder="Confirm Password" required />
-  </div>
-  <button class="btn btn-primary" type="submit">Register</button>
-</form>
+  <h2>Register</h2>
+  <form method="POST">
+    <input type="text" name="username" placeholder="Username" required>
+    <input type="password" name="password" placeholder="Password" required>
+    <button type="submit">Register</button>
+  </form>
 {% endblock %}
