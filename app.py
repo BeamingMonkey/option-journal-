@@ -14,11 +14,15 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-# Database connection using DATABASE_URL
+# Get database URL from environment
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_db():
-    return psycopg2.connect(DATABASE_URL, sslmode='require')
+    try:
+        return psycopg2.connect(DATABASE_URL, sslmode='require')
+    except Exception as e:
+        app.logger.error(f"Database connection error: {e}")
+        raise
 
 # --- User Class ---
 class User(UserMixin):
@@ -253,4 +257,5 @@ with app.app_context():
     init_db()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    app.run(debug=debug_mode)
