@@ -1,113 +1,24 @@
-<!-- templates/log_trade.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Log a Trade - My Trading Journal</title>
-  <style>
-    body {
-      background: #f5f7fa;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .container {
-      background: #fff;
-      padding: 40px 50px;
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-      width: 100%;
-      max-width: 480px;
-    }
-
-    h2 {
-      text-align: center;
-      font-weight: 700;
-      color: #222;
-      margin-bottom: 30px;
-      font-size: 28px;
-      letter-spacing: 1px;
-    }
-
-    form {
-      display: flex;
-      flex-direction: column;
-    }
-
-    input[type="text"],
-    input[type="number"],
-    select,
-    textarea {
-      padding: 14px 12px;
-      margin-bottom: 20px;
-      border: 1.5px solid #d1d5db;
-      border-radius: 8px;
-      font-size: 16px;
-      transition: border-color 0.3s ease;
-      resize: vertical;
-      font-family: inherit;
-    }
-
-    input[type="text"]:focus,
-    input[type="number"]:focus,
-    select:focus,
-    textarea:focus {
-      border-color: #3b82f6;
-      outline: none;
-      box-shadow: 0 0 5px #3b82f6aa;
-    }
-
-    textarea {
-      min-height: 80px;
-    }
-
-    button {
-      padding: 14px;
-      background-color: #3b82f6;
-      color: white;
-      font-weight: 700;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 18px;
-      transition: background-color 0.3s ease;
-      letter-spacing: 1px;
-    }
-
-    button:hover {
-      background-color: #2563eb;
-    }
-
-    @media (max-width: 520px) {
-      .container {
-        padding: 30px 25px;
-        margin: 20px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h2>Log a Trade</h2>
-    <form method="POST">
-      <input type="text" name="symbol" placeholder="Symbol" required />
-      <input type="number" name="entry" step="any" placeholder="Entry Price" required />
-      <input type="number" name="exit" step="any" placeholder="Exit Price" required />
-      <input type="number" name="qty" placeholder="Quantity" required />
-      <select name="currency" required>
-        <option value="" disabled selected>Select Currency</option>
-        <option value="INR">INR</option>
-        <option value="USD">USD</option>
-      </select>
-      <textarea name="reason" placeholder="Reason (optional)"></textarea>
-      <button type="submit">Log Trade</button>
-    </form>
+{% extends "base.html" %}
+{% block title %}Log Trade{% endblock %}
+{% block content %}
+<h2>Log a New Trade</h2>
+<form method="POST">
+  <div class="mb-3"><input type="text" name="symbol" placeholder="Symbol" class="form-control" required /></div>
+  <div class="mb-3"><input type="number" step="0.01" name="entry" placeholder="Entry Price" class="form-control" required /></div>
+  <div class="mb-3"><input type="number" step="0.01" name="exit" placeholder="Exit Price" class="form-control" required /></div>
+  <div class="mb-3"><input type="number" name="qty" placeholder="Quantity" class="form-control" required /></div>
+  <div class="mb-3"><input type="text" name="currency" placeholder="Currency (e.g. USD)" class="form-control" required /></div>
+  <div class="mb-3"><input type="text" name="reason" placeholder="Reason for Trade" class="form-control" /></div>
+  <div class="mb-3">
+    <select name="strategy" class="form-select">
+      <option value="" selected>Choose Strategy (optional)</option>
+      <option value="Breakout">Breakout</option>
+      <option value="Pullback">Pullback</option>
+      <option value="Scalping">Scalping</option>
+      <option value="Swing">Swing</option>
+      <option value="Position">Position</option>
+    </select>
   </div>
-</body>
-</html>
+  <button class="btn btn-success" type="submit">Submit</button>
+</form>
+{% endblock %}
