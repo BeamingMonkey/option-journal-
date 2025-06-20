@@ -1,10 +1,28 @@
-{% extends "base.html" %}
-{% block content %}
-<h2>📊 Dashboard</h2>
-<div class="row row-cols-1 row-cols-md-4 g-3 mt-3">
-  <div class="col"><div class="card text-center shadow-sm p-3"><h6>Total PnL</h6><h3>{{ stats.total_pnl }}</h3></div></div>
-  <div class="col"><div class="card text-center shadow-sm p-3"><h6>Best Trade</h6><h3>{{ stats.best_trade }}</h3></div></div>
-  <div class="col"><div class="card text-center shadow-sm p-3"><h6>Worst Trade</h6><h3>{{ stats.worst_trade }}</h3></div></div>
-  <div class="col"><div class="card text-center shadow-sm p-3"><h6>Total Trades</h6><h3>{{ stats.total_trades }}</h3></div></div>
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - My Trading Journal</title>
+    <link href="https://cdn.tailwindcss.com" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen">
+    <div class="bg-white rounded-lg shadow p-8 w-full max-w-lg text-center">
+        <h1 class="text-3xl font-bold text-blue-600">My Trading Journal</h1>
+        <h2 class="text-xl mt-2">Dashboard</h2>
+        <div class="mt-4 space-y-3 text-left">
+            <p><span class="font-bold">Total PnL:</span> {{ stats.total_pnl }}</p>
+            <p><span class="font-bold">Best Trade:</span> {{ stats.best_trade }}</p>
+            <p><span class="font-bold">Worst Trade:</span> {{ stats.worst_trade }}</p>
+            <p><span class="font-bold">Total Trades:</span> {{ stats.total_trades }}</p>
+        </div>
+        <div class="mt-6 flex flex-col space-y-3">
+            <a href="{{ url_for('log_trade') }}" class="bg-blue-600 text-white rounded p-3 hover:bg-blue-700">Log New Trade</a>
+            <a href="{{ url_for('past_trades') }}" class="bg-gray-600 text-white rounded p-3 hover:bg-gray-700">View Past Trades</a>
+            <a href="{{ url_for('index') }}" class="bg-green-600 text-white rounded p-3 hover:bg-green-700">Home</a>
+            <a href="{{ url_for('logout') }}" class="bg-red-600 text-white rounded p-3 hover:bg-red-700">Logout</a>
+        </div>
+    </div>
+    <footer class="text-center mt-8 text-gray-500 text-sm">
+        &copy; 2025 My Trading Journal - built with ❤️ by Arun Raj
+    </footer>
+</body>
+</html>
