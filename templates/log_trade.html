@@ -1,22 +1,83 @@
 {% extends "base.html" %}
+
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-8">
-    <h2>Log a Trade</h2>
-    <form method="post" class="mt-3">
-      <div class="row g-3">
-        <div class="col-md-3"><label>Symbol</label><input name="symbol" class="form-control" required></div>
-        <div class="col-md-3"><label>Entry Price</label><input name="entry" type="number" step="0.01" class="form-control" required></div>
-        <div class="col-md-3"><label>Exit Price</label><input name="exit" type="number" step="0.01" class="form-control" required></div>
-        <div class="col-md-3"><label>Qty</label><input name="qty" type="number" class="form-control" required></div>
-      </div>
-      <div class="row g-3 mt-2">
-        <div class="col-md-4"><label>Currency</label><input name="currency" class="form-control" required></div>
-        <div class="col-md-4"><label>Strategy</label><input name="strategy" class="form-control"></div>
-      </div>
-      <div class="mt-3"><label>Reason</label><textarea name="reason" class="form-control" rows="3" required></textarea></div>
-      <button type="submit" class="btn btn-success mt-3">Submit</button>
+<div class="max-w-2xl mx-auto mt-8 p-6 rounded-lg shadow-lg bg-white">
+    <h2 class="text-2xl font-bold text-gray-700">Log Trade</h2>
+    <form method="POST">
+        <!-- Trade Type -->
+        <label for="trade_type" class="block mt-4">Trade Type:</label>
+        <select id="trade_type" name="trade_type" class="mt-1 block w-full p-2 border rounded">
+            <option value="Option">Option</option>
+            <option value="Future">Future</option>
+            <option value="Stock">Stock</option>
+            <option value="Forex">Forex</option>
+            <option value="Crypto">Crypto</option>
+        </select>
+
+        <!-- Position -->
+        <label class="block mt-4">Position:</label>
+        <div class="flex space-x-4 mt-1">
+            <label><input type="radio" name="position" value="buy" checked> Buy</label>
+            <label><input type="radio" name="position" value="sell"> Sell</label>
+        </div>
+
+        <!-- Symbol -->
+        <label for="symbol" class="block mt-4">Symbol:</label>
+        <select id="symbol" name="symbol" class="mt-1 block w-full p-2 border rounded">
+            <!-- Options populated by JS -->
+        </select>
+
+        <!-- Entry, Exit, Quantity, Currency, Reason, Strategy -->
+        <label for="entry" class="block mt-4">Entry Price:</label>
+        <input type="text" id="entry" name="entry" required class="mt-1 block w-full p-2 border rounded">
+
+        <label for="exit" class="block mt-4">Exit Price:</label>
+        <input type="text" id="exit" name="exit" required class="mt-1 block w-full p-2 border rounded">
+
+        <label for="qty" class="block mt-4">Quantity:</label>
+        <input type="number" id="qty" name="qty" required class="mt-1 block w-full p-2 border rounded">
+
+        <label for="currency" class="block mt-4">Currency:</label>
+        <input type="text" id="currency" name="currency" required class="mt-1 block w-full p-2 border rounded">
+
+        <label for="reason" class="block mt-4">Reason:</label>
+        <textarea id="reason" name="reason" required class="mt-1 block w-full p-2 border rounded"></textarea>
+
+        <label for="strategy" class="block mt-4">Strategy (optional):</label>
+        <input type="text" id="strategy" name="strategy" class="mt-1 block w-full p-2 border rounded">
+
+        <div class="mt-4">
+            <button type="submit" class="bg-blue-600 text-white rounded p-2">Log Trade</button>
+        </div>
     </form>
-  </div>
 </div>
+
+<!-- JavaScript for Dynamic Symbols -->
+<script>
+const symbols = {
+    "Option": ["NIFTY", "BANKNIFTY", "RELIANCE", "INFY", "TCS"],
+    "Future": ["NIFTY_FUT", "BANKNIFTY_FUT", "RELIANCE_FUT", "INFY_FUT", "TCS_FUT"],
+    "Stock": ["RELIANCE", "INFY", "TCS", "HDFCBANK", "ICICIBANK"],
+    "Forex": ["USDINR", "EURUSD", "GBPUSD", "USDJPY", "USDCAD"],
+    "Crypto": ["BTCUSD", "ETHUSD", "XRPUSD", "LTCUSD", "BCHUSD"]
+};
+
+function populateSymbols() {
+    const tradeType = document.getElementById("trade_type").value;
+    const symbolSelect = document.getElementById("symbol");
+    symbolSelect.innerHTML = ""; // Clear existing options
+    symbols[tradeType].forEach(sym => {
+        const option = document.createElement("option");
+        option.value = sym;
+        option.text = sym;
+        symbolSelect.appendChild(option);
+    });
+}
+
+// Event Listeners
+document.getElementById("trade_type").addEventListener("change", populateSymbols);
+
+// Populate initial
+populateSymbols();
+</script>
 {% endblock %}
