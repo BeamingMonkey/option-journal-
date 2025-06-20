@@ -1,22 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>My Trading Journal</title>
-    <link href="https://cdn.tailwindcss.com" rel="stylesheet">
-</head>
-<body class="bg-gray-100 text-gray-800 flex flex-col items-center justify-center min-h-screen">
-    <div class="bg-white rounded-lg shadow p-8 w-full max-w-lg text-center">
-        <h1 class="text-3xl font-bold text-blue-600">My Trading Journal</h1>
-        <h2 class="text-xl mt-2">Welcome, {{ username }}</h2>
-        <div class="mt-6 space-y-3 flex flex-col">
-            <a href="{{ url_for('log_trade') }}" class="bg-blue-600 text-white rounded p-3 hover:bg-blue-700">Log New Trade</a>
-            <a href="{{ url_for('past_trades') }}" class="bg-gray-600 text-white rounded p-3 hover:bg-gray-700">View Past Trades</a>
-            <a href="{{ url_for('dashboard') }}" class="bg-green-600 text-white rounded p-3 hover:bg-green-700">Dashboard</a>
-            <a href="{{ url_for('logout') }}" class="bg-red-600 text-white rounded p-3 hover:bg-red-700">Logout</a>
-        </div>
-    </div>
-    <footer class="text-center mt-8 text-gray-500 text-sm">
-        &copy; 2025 My Trading Journal - built with ❤️ by Arun Raj
-    </footer>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Welcome - My Trading Journal{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl p-8 shadow-lg max-w-xl w-full text-center">
+  <h1 class="text-3xl font-bold text-gray-800">Welcome, {{ username }}!</h1>
+  <p class="text-gray-600 mt-2">Track your trades, analyze your performance, and grow as a trader!</p>
+  <div class="mt-6 space-x-3">
+    <a href="{{ url_for('log_trade') }}" class="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-2">Log Trade</a>
+    <a href="{{ url_for('dashboard') }}" class="bg-gray-600 hover:bg-gray-700 text-white rounded px-4 py-2">View Dashboard</a>
+  </div>
+</div>
+{% endblock %}
