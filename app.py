@@ -173,7 +173,7 @@ def past_trades():
         total_trades = cur.fetchone()[0]
 
         cur.execute(f"""
-            SELECT id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy 
+            SELECT id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy
             FROM trades
             WHERE {where_clause}
             ORDER BY timestamp DESC
@@ -243,15 +243,20 @@ def dashboard():
 def init_db():
     conn = get_db()
     with conn.cursor() as cur:
+        # ⚡ Drop old tables
+        cur.execute("DROP TABLE IF EXISTS trades CASCADE;")
+        cur.execute("DROP TABLE IF EXISTS users CASCADE;")
+
+        # ⚡ Create fresh tables
         cur.execute("""
-            CREATE TABLE IF NOT EXISTS users (
+            CREATE TABLE users (
                 id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL
-            )
+            );
         """)
         cur.execute("""
-            CREATE TABLE IF NOT EXISTS trades (
+            CREATE TABLE trades (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id),
                 market_type TEXT,
@@ -265,7 +270,7 @@ def init_db():
                 pnl REAL,
                 strategy TEXT,
                 option_contract TEXT
-            )
+            );
         """)
     conn.commit()
     conn.close()
