@@ -2,26 +2,25 @@ from flask import Flask, render_template, request, redirect, url_for, session, R
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
-import psycopg  # updated import
+import psycopg
 import os
 import csv
 from io import StringIO
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "super-secret-key")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "your_secret_key_here")
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-# Database connection using DATABASE_URL
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL")  # Ensure this is set
 
 def get_db():
-    # Use psycopg.connect with sslmode 'require'
+    """Connect to PostgreSQL with SSL required."""
     return psycopg.connect(DATABASE_URL, sslmode='require')
 
-# --- User Class ---
+# ---- User Model ----
 class User(UserMixin):
     def __init__(self, id_, username, password):
         self.id = id_
@@ -54,8 +53,7 @@ class User(UserMixin):
 def load_user(user_id):
     return User.get(user_id)
 
-# --- Routes ---
-
+# ---- Routes ----
 @app.route("/")
 @login_required
 def index():
@@ -70,8 +68,8 @@ def register():
 
         if password != confirm:
             return "Passwords do not match", 400
-
         password_hash = generate_password_hash(password)
+
         try:
             conn = get_db()
             with conn.cursor() as cur:
@@ -88,6 +86,7 @@ def login():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
+
         user = User.find_by_username(username)
         if user and check_password_hash(user.password, password):
             login_user(user)
@@ -105,6 +104,8 @@ def logout():
 @login_required
 def log_trade():
     if request.method == "POST":
+        trade_type = request.form["trade_type"]
+        position = request.form["position"]
         symbol = request.form["symbol"]
         entry = float(request.form["entry"])
         exit_price = float(request.form["exit"])
@@ -118,9 +119,13 @@ def log_trade():
         conn = get_db()
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO trades (user_id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (current_user.id, symbol, entry, exit_price, qty, currency, reason, timestamp, pnl, strategy))
+                INSERT INTO trades (
+                    user_id, symbol, entry, exit, qty, currency, reason,
+                    timestamp, pnl, strategy, trade_type, position
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (current_user.id, symbol, entry, exit_price, qty,
+                  currency, reason, timestamp, pnl, strategy, trade_type, position))
         conn.commit()
         conn.close()
         return redirect(url_for("past_trades"))
@@ -170,33 +175,52 @@ def past_trades():
         total_trades = cur.fetchone()[0]
 
         cur.execute(f"""
-            SELECT id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy
+            SELECT id, symbol, entry, exit, qty, currency, reason,
+            timestamp, pnl, strategy, trade_type, position
             {base_query}
-            ORDER BY timestamp DESC LIMIT %s OFFSET %s
+            ORDER BY timestamp DESC
+            LIMIT %s OFFSET %s
         """, tuple(values + [per_page, offset]))
         trades = cur.fetchall()
     conn.close()
 
     total_pages = (total_trades + per_page - 1) // per_page
-
-    return render_template("past_trades.html", trades=trades, page=page, total_pages=total_pages)
+    return render_template(
+        "past_trades.html",
+        trades=trades,
+        page=page,
+        total_pages=total_pages,
+        symbol=symbol,
+        from_date=from_date,
+        to_date=to_date,
+        min_pnl=min_pnl,
+        max_pnl=max_pnl,
+        strategy=strategy_filter,
+    )
 
 @app.route("/export")
 @login_required
 def export_csv():
     conn = get_db()
     with conn.cursor() as cur:
-        cur.execute("SELECT symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy FROM trades WHERE user_id = %s", (current_user.id,))
+        cur.execute("""
+            SELECT symbol, entry, exit, qty, currency, reason,
+            timestamp, pnl, strategy, trade_type, position
+            FROM trades WHERE user_id = %s
+        """, (current_user.id,))
         trades = cur.fetchall()
     conn.close()
 
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Symbol", "Entry", "Exit", "Qty", "Currency", "Reason", "Timestamp", "PnL", "Strategy"])
+    writer.writerow(["Symbol", "Entry", "Exit", "Qty", "Currency", "Reason",
+                     "Timestamp", "Pnl", "Strategy", "Trade Type", "Position"])
     for trade in trades:
         writer.writerow(trade)
+
     output.seek(0)
-    return Response(output, mimetype="text/csv", headers={"Content-Disposition": "attachment; filename=trades.csv"})
+    return Response(output, mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=trades.csv"})
 
 @app.route("/dashboard")
 @login_required
@@ -218,11 +242,11 @@ def dashboard():
         "total_pnl": total_pnl,
         "best_trade": best_trade,
         "worst_trade": worst_trade,
-        "total_trades": total_trades
+        "total_trades": total_trades,
     }
     return render_template("dashboard.html", stats=stats)
 
-# --- Initialize DB ---
+# ---- Initialize DB ----
 def init_db():
     conn = get_db()
     with conn.cursor() as cur:
@@ -245,15 +269,16 @@ def init_db():
                 reason TEXT,
                 timestamp TIMESTAMP,
                 pnl REAL,
-                strategy TEXT
+                strategy TEXT,
+                trade_type TEXT,
+                position TEXT
             )
         """)
     conn.commit()
     conn.close()
 
-# Initialize DB only once on startup
-with app.app_context():
-    init_db()
 
 if __name__ == "__main__":
+    with app.app_context():
+        init_db()
     app.run(debug=True)
