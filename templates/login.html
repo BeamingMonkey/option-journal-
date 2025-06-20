@@ -1,26 +1,25 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Login - My Trading Journal</title>
-    <link href="https://cdn.tailwindcss.com" rel="stylesheet">
-</head>
-<body class="bg-gray-100 flex items-center justify-center h-screen">
-    <div class="bg-white rounded-lg shadow p-6 w-80">
-        <h1 class="text-2xl font-bold text-center text-blue-600">My Trading Journal</h1>
-        <h2 class="text-xl text-center mt-2">Login</h2>
-        <form method="POST" class="mt-4 space-y-3">
-            <input name="username" placeholder="Username" required
-                   class="w-full p-2 rounded border focus:outline-none focus:border-blue-600" />
-            <input name="password" placeholder="Password" required type="password"
-                   class="w-full p-2 rounded border focus:outline-none focus:border-blue-600" />
-            <button class="bg-blue-600 text-white rounded w-full p-2 hover:bg-blue-700">Login</button>
-        </form>
-        <div class="text-center mt-3">
-            <a href="{{ url_for('register') }}" class="text-blue-600 hover:underline">Register</a>
-        </div>
+{% extends "base.html" %}
+
+{% block title %}Login - My Trading Journal{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full">
+  <h2 class="text-2xl font-bold text-gray-800 text-center">Login</h2>
+  <form method="POST" class="mt-4 space-y-4">
+    <div>
+      <label class="block text-gray-600 font-semibold">Username</label>
+      <input name="username" required class="w-full p-2 rounded border mt-1">
     </div>
-    <footer class="text-center mt-4 text-gray-500 text-sm">
-        &copy; 2025 My Trading Journal - built with ❤️ by Arun Raj
-    </footer>
-</body>
-</html>
+    <div>
+      <label class="block text-gray-600 font-semibold">Password</label>
+      <input type="password" name="password" required class="w-full p-2 rounded border mt-1">
+    </div>
+    <div class="text-center">
+      <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded px-4 py-2">Login</button>
+    </div>
+  </form>
+  <p class="text-center mt-4 text-gray-500">Don't have an account? 
+    <a href="{{ url_for('register') }}" class="text-blue-600 hover:underline">Register</a>
+  </p>
+</div>
+{% endblock %}
