@@ -1,23 +1,24 @@
 from flask import Flask, render_template, request, redirect, url_for, session, Response
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
 import psycopg
 import os
 import csv
 from io import StringIO
+from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "super_secret_key_here")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "your_secret_key_here")
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-# Database setup
+# Use environment variable for database
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_db():
+    """Connect to the PostgreSQL database."""
     return psycopg.connect(DATABASE_URL, sslmode="require")
 
 # User Model
@@ -67,17 +68,19 @@ def register():
 
         if password != confirm:
             return "Passwords do not match", 400
+
         password_hash = generate_password_hash(password)
 
+        conn = get_db()
         try:
-            conn = get_db()
             with conn.cursor() as cur:
                 cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password_hash))
             conn.commit()
-            conn.close()
-            return redirect(url_for("login"))
         except Exception as e:
-            return f"Error: {e}", 409
+            conn.close()
+            return f"Username already exists or error: {e}", 409
+        conn.close()
+        return redirect(url_for("login"))
     return render_template("register.html")
 
 @app.route("/login", methods=["GET", "POST"])
@@ -103,25 +106,25 @@ def logout():
 @login_required
 def log_trade():
     if request.method == "POST":
-        symbol = request.form["symbol"]
+        market_type = request.form["market_type"]
+        symbol = request.form.get("symbol") or request.form.get("other_symbol") or request.form.get("option_contract")
         entry = float(request.form["entry"])
         exit_price = float(request.form["exit"])
         qty = int(request.form["qty"])
         currency = request.form["currency"]
         reason = request.form["reason"]
         strategy = request.form.get("strategy", "")
-        trade_type = request.form["trade_type"]
-        position = request.form["position"]
-
+        option_contract = request.form.get("option_contract", "")
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         pnl = round((exit_price - entry) * qty, 2)
 
         conn = get_db()
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO trades (user_id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, trade_type, position)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (current_user.id, symbol, entry, exit_price, qty, currency, reason, timestamp, pnl, strategy, trade_type, position))
+                INSERT INTO trades 
+                (user_id, market_type, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, option_contract) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (current_user.id, market_type, symbol, entry, exit_price, qty, currency, reason, timestamp, pnl, strategy, option_contract))
         conn.commit()
         conn.close()
         return redirect(url_for("past_trades"))
@@ -163,41 +166,49 @@ def past_trades():
         values.append(f"%{strategy_filter}%")
 
     where_clause = " AND ".join(filters)
-    base_query = f"FROM trades WHERE {where_clause}"
 
     conn = get_db()
     with conn.cursor() as cur:
-        cur.execute(f"SELECT COUNT(*) {base_query}", tuple(values))
+        cur.execute(f"SELECT COUNT(*) FROM trades WHERE {where_clause}", values)
         total_trades = cur.fetchone()[0]
 
         cur.execute(f"""
-            SELECT id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, trade_type, position
-            {base_query}
+            SELECT id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy 
+            FROM trades
+            WHERE {where_clause}
             ORDER BY timestamp DESC
             LIMIT %s OFFSET %s
-        """, tuple(values + [per_page, offset]))
+        """, values + [per_page, offset])
         trades = cur.fetchall()
     conn.close()
 
     total_pages = (total_trades + per_page - 1) // per_page
-
-    return render_template("past_trades.html", trades=trades, page=page, total_pages=total_pages,
-                           symbol=symbol, from_date=from_date, to_date=to_date,
-                           min_pnl=min_pnl, max_pnl=max_pnl, strategy=strategy_filter)
+    return render_template("past_trades.html",
+                           trades=trades,
+                           page=page,
+                           total_pages=total_pages,
+                           symbol=symbol,
+                           from_date=from_date,
+                           to_date=to_date,
+                           min_pnl=min_pnl,
+                           max_pnl=max_pnl,
+                           strategy=strategy_filter)
 
 @app.route("/export")
 @login_required
 def export_csv():
     conn = get_db()
     with conn.cursor() as cur:
-        cur.execute("SELECT * FROM trades WHERE user_id = %s", (current_user.id,))
+        cur.execute("""
+            SELECT symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, option_contract
+            FROM trades WHERE user_id = %s
+        """, (current_user.id,))
         trades = cur.fetchall()
     conn.close()
 
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(["id", "user_id", "symbol", "entry", "exit", "qty", "currency",
-                     "reason", "timestamp", "pnl", "strategy", "trade_type", "position"])
+    writer.writerow(["Symbol", "Entry", "Exit", "Qty", "Currency", "Reason", "Timestamp", "PnL", "Strategy", "Option Contract"])
     for trade in trades:
         writer.writerow(trade)
 
@@ -211,24 +222,24 @@ def dashboard():
     with conn.cursor() as cur:
         cur.execute("""
             SELECT 
-                COALESCE(SUM(pnl), 0),
-                COALESCE(MAX(pnl), 0),
-                COALESCE(MIN(pnl), 0),
-                COUNT(*)
-            FROM trades WHERE user_id = %s
+                COALESCE(SUM(pnl), 0) AS total_pnl,
+                COALESCE(MAX(pnl), 0) AS best_trade,
+                COALESCE(MIN(pnl), 0) AS worst_trade,
+                COUNT(*) AS total_trades
+            FROM trades
+            WHERE user_id = %s
         """, (current_user.id,))
-        total_pnl, best_trade, worst_trade, total_trades = cur.fetchone()
+        stats = cur.fetchone()
     conn.close()
-
     stats = {
-        "total_pnl": total_pnl,
-        "best_trade": best_trade,
-        "worst_trade": worst_trade,
-        "total_trades": total_trades
+        "total_pnl": stats[0],
+        "best_trade": stats[1],
+        "worst_trade": stats[2],
+        "total_trades": stats[3]
     }
     return render_template("dashboard.html", stats=stats)
 
-# Initialize DB
+# Initialize Database
 def init_db():
     conn = get_db()
     with conn.cursor() as cur:
@@ -243,6 +254,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS trades (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id),
+                market_type TEXT,
                 symbol TEXT,
                 entry REAL,
                 exit REAL,
@@ -252,16 +264,12 @@ def init_db():
                 timestamp TIMESTAMP,
                 pnl REAL,
                 strategy TEXT,
-                trade_type TEXT,
-                position TEXT
+                option_contract TEXT
             )
         """)
     conn.commit()
     conn.close()
 
-with app.app_context():
-    init_db()
-
 if __name__ == "__main__":
+    init_db()
     app.run(debug=True)
-
