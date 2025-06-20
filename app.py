@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, Response
+from flask import Flask, render_template, request, redirect, url_for, session, Response, flash
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg
@@ -106,27 +106,54 @@ def logout():
 @login_required
 def log_trade():
     if request.method == "POST":
-        market_type = request.form["market_type"]
-        symbol = request.form.get("symbol") or request.form.get("other_symbol") or request.form.get("option_contract")
+        market_type = request.form.get("market_type")
         entry = float(request.form["entry"])
         exit_price = float(request.form["exit"])
         qty = int(request.form["qty"])
         currency = request.form["currency"]
         reason = request.form["reason"]
-        strategy = request.form.get("strategy", "")
-        option_contract = request.form.get("option_contract", "")
+        strategy = request.form.get("strategy") or None
+        option_contract = request.form.get("option_contract") or None
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         pnl = round((exit_price - entry) * qty, 2)
 
+        # Choose symbol based on market_type
+        if market_type == "Index":
+            symbol = request.form.get("symbol")
+        elif market_type == "Option":
+            symbol = request.form.get("symbol")  # You can adapt if needed
+        else:
+            symbol = request.form.get("other_symbol")
+
         conn = get_db()
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO trades 
-                (user_id, market_type, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, option_contract) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (current_user.id, market_type, symbol, entry, exit_price, qty, currency, reason, timestamp, pnl, strategy, option_contract))
-        conn.commit()
-        conn.close()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO trades 
+                    (user_id, market_type, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, option_contract) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
+                """, (
+                    current_user.id,
+                    market_type,
+                    symbol,
+                    entry,
+                    exit_price,
+                    qty,
+                    currency,
+                    reason,
+                    timestamp,
+                    pnl,
+                    strategy,
+                    option_contract
+                ))
+            conn.commit()
+            flash("Trade logged successfully!", "success")
+        except Exception as e:
+            conn.rollback()
+            app.logger.error(f"Error inserting trade: {e}")
+            flash(f"Error inserting trade: {e}", "danger")
+        finally:
+            conn.close()
         return redirect(url_for("past_trades"))
     return render_template("log_trade.html")
 
@@ -147,17 +174,23 @@ def past_trades():
     values = [current_user.id]
 
     if symbol:
-        filters.append("symbol ILIKE %s"); values.append(f"%{symbol}%")
+        filters.append("symbol ILIKE %s")
+        values.append(f"%{symbol}%")
     if from_date:
-        filters.append("timestamp::date >= %s"); values.append(from_date)
+        filters.append("timestamp::date >= %s")
+        values.append(from_date)
     if to_date:
-        filters.append("timestamp::date <= %s"); values.append(to_date)
+        filters.append("timestamp::date <= %s")
+        values.append(to_date)
     if min_pnl:
-        filters.append("pnl >= %s"); values.append(min_pnl)
+        filters.append("pnl >= %s")
+        values.append(min_pnl)
     if max_pnl:
-        filters.append("pnl <= %s"); values.append(max_pnl)
+        filters.append("pnl <= %s")
+        values.append(max_pnl)
     if strategy_filter:
-        filters.append("strategy ILIKE %s"); values.append(f"%{strategy_filter}%")
+        filters.append("strategy ILIKE %s")
+        values.append(f"%{strategy_filter}%")
 
     where_clause = " AND ".join(filters)
 
@@ -167,16 +200,13 @@ def past_trades():
         total_trades = cur.fetchone()[0]
 
         cur.execute(f"""
-            SELECT id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy
+            SELECT id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, option_contract
             FROM trades
             WHERE {where_clause}
             ORDER BY timestamp DESC
             LIMIT %s OFFSET %s
         """, values + [per_page, offset])
-        columns = [desc[0] for desc in cur.description]
-        rows = cur.fetchall()
-        trades = [dict(zip(columns, row)) for row in rows]
-
+        trades = cur.fetchall()
     conn.close()
 
     total_pages = (total_trades + per_page - 1) // per_page
@@ -210,7 +240,8 @@ def export_csv():
         writer.writerow(trade)
 
     output.seek(0)
-    return Response(output, mimetype="text/csv", headers={"Content-Disposition": "attachment; filename=trades.csv"})
+    return Response(output, mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=trades.csv"})
 
 @app.route("/dashboard")
 @login_required
@@ -245,7 +276,7 @@ def init_db():
                 id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL
-            )
+            );
         """)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS trades (
@@ -262,7 +293,7 @@ def init_db():
                 pnl REAL,
                 strategy TEXT,
                 option_contract TEXT
-            )
+            );
         """)
     conn.commit()
     conn.close()
