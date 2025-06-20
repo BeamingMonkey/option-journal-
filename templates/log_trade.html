@@ -1,149 +1,57 @@
-{% extends "base.html" %}
+@app.route("/log", methods=["GET", "POST"])
+@login_required
+def log_trade():
+    if request.method == "POST":
+        market_type = request.form.get("market_type")
+        entry = float(request.form["entry"])
+        exit_price = float(request.form["exit"])
+        qty = int(request.form["qty"])
+        currency = request.form["currency"]
+        reason = request.form["reason"]
+        strategy = request.form.get("strategy") or None
+        option_contract = request.form.get("option_contract") or None
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        pnl = round((exit_price - entry) * qty, 2)
 
-{% block title %}Log Trade - My Trading Journal{% endblock %}
+        # Choose symbol based on market_type
+        if market_type == "Index":
+            symbol = request.form.get("symbol")  # Index symbol
+        elif market_type == "Option":
+            symbol = request.form.get("symbol")  # You can still use this for index options
+        else:
+            symbol = request.form.get("other_symbol")  # Stock, Forex, or Crypto symbol
 
-{% block content %}
-<div class="w-full max-w-xl bg-white rounded-xl p-8 shadow-lg">
-    <h2 class="text-2xl font-bold text-gray-800 text-center">Log Trade</h2>
-    <form method="POST" class="space-y-4 mt-6">
+        conn = get_db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO trades 
+                    (user_id, market_type, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, option_contract) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
+                """, (
+                    current_user.id,
+                    market_type,
+                    symbol,
+                    entry,
+                    exit_price,
+                    qty,
+                    currency,
+                    reason,
+                    timestamp,
+                    pnl,
+                    strategy,
+                    option_contract
+                ))
+            conn.commit()
+            flash("Trade logged successfully!", "success")
+        except Exception as e:
+            conn.rollback()
+            app.logger.error(f"Error inserting trade: {e}")
+            flash(f"Error inserting trade: {e}", "danger")
+        finally:
+            conn.close()
 
-        <!-- Market Type Selection -->
-        <div>
-            <label class="block text-gray-600 font-semibold">Market Type</label>
-            <select id="market_type" name="market_type" class="w-full p-2 rounded border mt-1">
-                <option value="Index">Index</option>
-                <option value="Option">Option</option>
-                <option value="Stock">Stock</option>
-                <option value="Forex">Forex</option>
-                <option value="Crypto">Crypto</option>
-            </select>
-        </div>
+        return redirect(url_for("past_trades"))
 
-        <!-- Index Symbol -->
-        <div id="index_symbol_container">
-            <label class="block text-gray-600 font-semibold">Index</label>
-            <select name="symbol" id="index_symbol" class="w-full p-2 rounded border mt-1">
-                <option value="Nifty">Nifty</option>
-                <option value="BankNifty">BankNifty</option>
-                <option value="FinNifty">FinNifty</option>
-                <option value="Midcap">Midcap</option>
-                <option value="Sensex">Sensex</option>
-            </select>
-        </div>
-
-        <!-- Option Contract -->
-        <div id="option_contract_container" class="hidden">
-            <label class="block text-gray-600 font-semibold">Option Contract (e.g., NIFTY 25000CE)</label>
-            <input 
-                type="text" 
-                name="option_contract" 
-                placeholder="Enter option contract (e.g., NIFTY 25000CE)" 
-                class="w-full p-2 rounded border mt-1">
-        </div>
-
-        <!-- Other Symbol (Stock, Forex, Crypto) -->
-        <div id="other_symbol_container" class="hidden">
-            <label class="block text-gray-600 font-semibold">Symbol</label>
-            <input 
-                type="text" 
-                name="other_symbol" 
-                placeholder="Enter symbol (e.g., RELIANCE, EURUSD, BTCUSD)" 
-                class="w-full p-2 rounded border mt-1">
-        </div>
-
-        <!-- Entry and Exit Prices -->
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-gray-600 font-semibold">Entry Price</label>
-                <input 
-                    type="number" 
-                    step="0.01" 
-                    name="entry" 
-                    required 
-                    class="w-full p-2 rounded border mt-1">
-            </div>
-            <div>
-                <label class="block text-gray-600 font-semibold">Exit Price</label>
-                <input 
-                    type="number" 
-                    step="0.01" 
-                    name="exit" 
-                    required 
-                    class="w-full p-2 rounded border mt-1">
-            </div>
-        </div>
-
-        <!-- Quantity -->
-        <div>
-            <label class="block text-gray-600 font-semibold">Quantity</label>
-            <input 
-                type="number" 
-                name="qty" 
-                required 
-                class="w-full p-2 rounded border mt-1">
-        </div>
-
-        <!-- Currency -->
-        <div>
-            <label class="block text-gray-600 font-semibold">Currency</label>
-            <select name="currency" class="w-full p-2 rounded border mt-1">
-                <option value="INR">INR</option>
-                <option value="USD">USD</option>
-            </select>
-        </div>
-
-        <!-- Reason -->
-        <div>
-            <label class="block text-gray-600 font-semibold">Reason for Trade</label>
-            <textarea 
-                name="reason" 
-                required 
-                class="w-full p-2 rounded border mt-1"
-                placeholder="Enter your reason for this trade"></textarea>
-        </div>
-
-        <!-- Strategy -->
-        <div>
-            <label class="block text-gray-600 font-semibold">Strategy (optional)</label>
-            <input 
-                type="text" 
-                name="strategy" 
-                class="w-full p-2 rounded border mt-1" 
-                placeholder="Enter your trading strategy">
-        </div>
-
-        <div class="text-center">
-            <button 
-                type="submit" 
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded px-4 py-2">
-                Log Trade
-            </button>
-        </div>
-    </form>
-</div>
-
-<!-- Dynamic Visibility Script -->
-<script>
-const marketType = document.getElementById("market_type");
-const indexContainer = document.getElementById("index_symbol_container");
-const optionContainer = document.getElementById("option_contract_container");
-const otherContainer = document.getElementById("other_symbol_container");
-
-marketType.addEventListener("change", function() {
-    const value = marketType.value;
-
-    // Reset visibility
-    indexContainer.classList.add("hidden");
-    optionContainer.classList.add("hidden");
-    otherContainer.classList.add("hidden");
-
-    if (value === "Index") {
-        indexContainer.classList.remove("hidden");
-    } else if (value === "Option") {
-        optionContainer.classList.remove("hidden");
-    } else {
-        otherContainer.classList.remove("hidden");
-    }
-});
-</script>
-{% endblock %}
+    # GET request
+    return render_template("log_trade.html")
