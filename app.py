@@ -147,23 +147,17 @@ def past_trades():
     values = [current_user.id]
 
     if symbol:
-        filters.append("symbol ILIKE %s")
-        values.append(f"%{symbol}%")
+        filters.append("symbol ILIKE %s"); values.append(f"%{symbol}%")
     if from_date:
-        filters.append("timestamp::date >= %s")
-        values.append(from_date)
+        filters.append("timestamp::date >= %s"); values.append(from_date)
     if to_date:
-        filters.append("timestamp::date <= %s")
-        values.append(to_date)
+        filters.append("timestamp::date <= %s"); values.append(to_date)
     if min_pnl:
-        filters.append("pnl >= %s")
-        values.append(min_pnl)
+        filters.append("pnl >= %s"); values.append(min_pnl)
     if max_pnl:
-        filters.append("pnl <= %s")
-        values.append(max_pnl)
+        filters.append("pnl <= %s"); values.append(max_pnl)
     if strategy_filter:
-        filters.append("strategy ILIKE %s")
-        values.append(f"%{strategy_filter}%")
+        filters.append("strategy ILIKE %s"); values.append(f"%{strategy_filter}%")
 
     where_clause = " AND ".join(filters)
 
@@ -179,7 +173,10 @@ def past_trades():
             ORDER BY timestamp DESC
             LIMIT %s OFFSET %s
         """, values + [per_page, offset])
-        trades = cur.fetchall()
+        columns = [desc[0] for desc in cur.description]
+        rows = cur.fetchall()
+        trades = [dict(zip(columns, row)) for row in rows]
+
     conn.close()
 
     total_pages = (total_trades + per_page - 1) // per_page
@@ -221,7 +218,7 @@ def dashboard():
     conn = get_db()
     with conn.cursor() as cur:
         cur.execute("""
-            SELECT 
+            SELECT
                 COALESCE(SUM(pnl), 0) AS total_pnl,
                 COALESCE(MAX(pnl), 0) AS best_trade,
                 COALESCE(MIN(pnl), 0) AS worst_trade,
@@ -243,20 +240,15 @@ def dashboard():
 def init_db():
     conn = get_db()
     with conn.cursor() as cur:
-        # ⚡ Drop old tables
-        cur.execute("DROP TABLE IF EXISTS trades CASCADE;")
-        cur.execute("DROP TABLE IF EXISTS users CASCADE;")
-
-        # ⚡ Create fresh tables
         cur.execute("""
-            CREATE TABLE users (
+            CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL
-            );
+            )
         """)
         cur.execute("""
-            CREATE TABLE trades (
+            CREATE TABLE IF NOT EXISTS trades (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id),
                 market_type TEXT,
@@ -270,7 +262,7 @@ def init_db():
                 pnl REAL,
                 strategy TEXT,
                 option_contract TEXT
-            );
+            )
         """)
     conn.commit()
     conn.close()
