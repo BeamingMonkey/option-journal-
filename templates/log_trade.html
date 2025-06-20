@@ -1,83 +1,90 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Log Trade - My Trading Journal</title>
+    <link href="https://cdn.tailwindcss.com" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="max-w-2xl mx-auto p-6">
+        <h1 class="text-3xl font-bold text-center text-blue-600">My Trading Journal</h1>
+        <h2 class="text-xl text-center mt-2">Log a New Trade</h2>
+        <form method="POST" class="bg-white rounded-lg shadow p-4 mt-4 space-y-3">
+            <!-- Trade Type -->
+            <label class="block">
+                <span class="font-semibold">Trade Type</span>
+                <select name="trade_type" required class="mt-1 block w-full rounded border p-2">
+                    <option value="option">Option</option>
+                    <option value="future">Future</option>
+                    <option value="stock">Stock</option>
+                    <option value="forex">Forex</option>
+                    <option value="crypto">Crypto</option>
+                </select>
+            </label>
 
-{% block content %}
-<div class="max-w-2xl mx-auto mt-8 p-6 rounded-lg shadow-lg bg-white">
-    <h2 class="text-2xl font-bold text-gray-700">Log Trade</h2>
-    <form method="POST">
-        <!-- Trade Type -->
-        <label for="trade_type" class="block mt-4">Trade Type:</label>
-        <select id="trade_type" name="trade_type" class="mt-1 block w-full p-2 border rounded">
-            <option value="Option">Option</option>
-            <option value="Future">Future</option>
-            <option value="Stock">Stock</option>
-            <option value="Forex">Forex</option>
-            <option value="Crypto">Crypto</option>
-        </select>
+            <!-- Position -->
+            <label class="block">
+                <span class="font-semibold">Position</span>
+                <select name="position" required class="mt-1 block w-full rounded border p-2">
+                    <option value="buy">Buy</option>
+                    <option value="sell">Sell</option>
+                </select>
+            </label>
 
-        <!-- Position -->
-        <label class="block mt-4">Position:</label>
-        <div class="flex space-x-4 mt-1">
-            <label><input type="radio" name="position" value="buy" checked> Buy</label>
-            <label><input type="radio" name="position" value="sell"> Sell</label>
-        </div>
+            <!-- Symbol -->
+            <label class="block">
+                <span class="font-semibold">Symbol</span>
+                <select name="symbol" required class="mt-1 block w-full rounded border p-2">
+                    <option value="Nifty 50">Nifty 50</option>
+                    <option value="Nifty Midcap">Nifty Midcap</option>
+                    <option value="Sensex">Sensex</option>
+                    <option value="BankEx">BankEx</option>
+                    <option value="FinNifty">FinNifty</option>
+                </select>
+            </label>
 
-        <!-- Symbol -->
-        <label for="symbol" class="block mt-4">Symbol:</label>
-        <select id="symbol" name="symbol" class="mt-1 block w-full p-2 border rounded">
-            <!-- Options populated by JS -->
-        </select>
+            <!-- Entry -->
+            <label class="block">
+                <span class="font-semibold">Entry Price</span>
+                <input type="number" name="entry" step="0.01" required class="mt-1 block w-full rounded border p-2">
+            </label>
 
-        <!-- Entry, Exit, Quantity, Currency, Reason, Strategy -->
-        <label for="entry" class="block mt-4">Entry Price:</label>
-        <input type="text" id="entry" name="entry" required class="mt-1 block w-full p-2 border rounded">
+            <!-- Exit -->
+            <label class="block">
+                <span class="font-semibold">Exit Price</span>
+                <input type="number" name="exit" step="0.01" required class="mt-1 block w-full rounded border p-2">
+            </label>
 
-        <label for="exit" class="block mt-4">Exit Price:</label>
-        <input type="text" id="exit" name="exit" required class="mt-1 block w-full p-2 border rounded">
+            <!-- Quantity -->
+            <label class="block">
+                <span class="font-semibold">Quantity</span>
+                <input type="number" name="qty" required class="mt-1 block w-full rounded border p-2">
+            </label>
 
-        <label for="qty" class="block mt-4">Quantity:</label>
-        <input type="number" id="qty" name="qty" required class="mt-1 block w-full p-2 border rounded">
+            <!-- Currency -->
+            <label class="block">
+                <span class="font-semibold">Currency</span>
+                <input type="text" name="currency" required class="mt-1 block w-full rounded border p-2">
+            </label>
 
-        <label for="currency" class="block mt-4">Currency:</label>
-        <input type="text" id="currency" name="currency" required class="mt-1 block w-full p-2 border rounded">
+            <!-- Reason -->
+            <label class="block">
+                <span class="font-semibold">Reason for Trade</span>
+                <textarea name="reason" required class="mt-1 block w-full rounded border p-2"></textarea>
+            </label>
 
-        <label for="reason" class="block mt-4">Reason:</label>
-        <textarea id="reason" name="reason" required class="mt-1 block w-full p-2 border rounded"></textarea>
+            <!-- Strategy -->
+            <label class="block">
+                <span class="font-semibold">Strategy (Optional)</span>
+                <input type="text" name="strategy" class="mt-1 block w-full rounded border p-2">
+            </label>
 
-        <label for="strategy" class="block mt-4">Strategy (optional):</label>
-        <input type="text" id="strategy" name="strategy" class="mt-1 block w-full p-2 border rounded">
-
-        <div class="mt-4">
-            <button type="submit" class="bg-blue-600 text-white rounded p-2">Log Trade</button>
-        </div>
-    </form>
-</div>
-
-<!-- JavaScript for Dynamic Symbols -->
-<script>
-const symbols = {
-    "Option": ["NIFTY", "BANKNIFTY", "RELIANCE", "INFY", "TCS"],
-    "Future": ["NIFTY_FUT", "BANKNIFTY_FUT", "RELIANCE_FUT", "INFY_FUT", "TCS_FUT"],
-    "Stock": ["RELIANCE", "INFY", "TCS", "HDFCBANK", "ICICIBANK"],
-    "Forex": ["USDINR", "EURUSD", "GBPUSD", "USDJPY", "USDCAD"],
-    "Crypto": ["BTCUSD", "ETHUSD", "XRPUSD", "LTCUSD", "BCHUSD"]
-};
-
-function populateSymbols() {
-    const tradeType = document.getElementById("trade_type").value;
-    const symbolSelect = document.getElementById("symbol");
-    symbolSelect.innerHTML = ""; // Clear existing options
-    symbols[tradeType].forEach(sym => {
-        const option = document.createElement("option");
-        option.value = sym;
-        option.text = sym;
-        symbolSelect.appendChild(option);
-    });
-}
-
-// Event Listeners
-document.getElementById("trade_type").addEventListener("change", populateSymbols);
-
-// Populate initial
-populateSymbols();
-</script>
-{% endblock %}
+            <div class="text-center mt-4">
+                <button class="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700" type="submit">Log Trade</button>
+            </div>
+        </form>
+    </div>
+    <footer class="text-center mt-6 text-gray-500 text-sm">
+        &copy; 2025 My Trading Journal - built with ❤️ by Arun Raj
+    </footer>
+</body>
+</html>
