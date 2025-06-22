@@ -24,17 +24,21 @@ def log_trade():
             flash("Please enter valid (greater than 0) entry, exit, and quantity values.", "danger")
             return redirect(url_for("log_trade"))
 
-        # Determine symbol
-        symbol = request.form.get("symbol") or request.form.get("other_symbol") or ""
-        symbol = symbol.strip()
+        # Determine symbol, prefer 'symbol' over 'other_symbol'
+        symbol = (request.form.get("symbol") or request.form.get("other_symbol") or "").strip()
         if not symbol:
             flash("Please provide a valid symbol for the trade.", "danger")
             return redirect(url_for("log_trade"))
 
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Use datetime object directly (psycopg can handle it)
+        timestamp = datetime.now()
         pnl = round((exit_price - entry) * qty, 2)
 
         conn = get_db()
+        if not conn:
+            flash("Database connection error.", "danger")
+            return redirect(url_for("log_trade"))
+
         try:
             with conn.cursor() as cur:
                 cur.execute("""
