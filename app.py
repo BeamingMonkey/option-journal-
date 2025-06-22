@@ -1,5 +1,22 @@
-from flask import Flask, render_template, request, redirect, url_for, session, Response, flash, current_app
-from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    session,
+    Response,
+    current_app,
+)
+from flask_login import (
+    LoginManager,
+    login_user,
+    login_required,
+    logout_user,
+    UserMixin,
+    current_user,
+)
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg
 import os
@@ -15,8 +32,8 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-# Use environment variable for database URL
 DATABASE_URL = os.environ.get("DATABASE_URL")
+
 
 def get_db():
     """Connect to the PostgreSQL database with error handling."""
@@ -28,7 +45,6 @@ def get_db():
         return None
 
 
-# User Model
 class User(UserMixin):
     def __init__(self, id_, username, password):
         self.id = id_
@@ -98,13 +114,17 @@ def register():
             return redirect(url_for("register"))
         try:
             with conn.cursor() as cur:
-                cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password_hash))
+                cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)",
+                            (username, password_hash))
             conn.commit()
             flash("Registration successful! Please login.", "success")
             return redirect(url_for("login"))
         except Exception as e:
             conn.rollback()
-            flash(f"Username already exists or error: {e}", "danger")
+            if "unique" in str(e).lower():
+                flash("Username already taken. Try a different one.", "danger")
+            else:
+                flash(f"Error creating account: {e}", "danger")
             return redirect(url_for("register"))
         finally:
             conn.close()
@@ -121,7 +141,7 @@ def login():
         if user and check_password_hash(user.password, password):
             login_user(user)
             return redirect(url_for("index"))
-        flash("Invalid credentials", "danger")
+        flash("Invalid username or password", "danger")
         return redirect(url_for("login"))
     return render_template("login.html")
 
@@ -132,114 +152,6 @@ def logout():
     logout_user()
     flash("Logged out successfully.", "success")
     return redirect(url_for("login"))
-
-
-@app.route("/past")
-@login_required
-def past_trades():
-    symbol = request.args.get("symbol")
-    from_date = request.args.get("from_date")
-    to_date = request.args.get("to_date")
-    min_pnl = request.args.get("min_pnl")
-    max_pnl = request.args.get("max_pnl")
-    strategy_filter = request.args.get("strategy")
-    page = int(request.args.get("page", 1))
-    per_page = 10
-    offset = (page - 1) * per_page
-
-    filters = ["user_id = %s"]
-    values = [current_user.id]
-
-    if symbol:
-        filters.append("symbol ILIKE %s")
-        values.append(f"%{symbol}%")
-    if from_date:
-        filters.append("timestamp::date >= %s")
-        values.append(from_date)
-    if to_date:
-        filters.append("timestamp::date <= %s")
-        values.append(to_date)
-    if min_pnl:
-        filters.append("pnl >= %s")
-        values.append(min_pnl)
-    if max_pnl:
-        filters.append("pnl <= %s")
-        values.append(max_pnl)
-    if strategy_filter:
-        filters.append("strategy ILIKE %s")
-        values.append(f"%{strategy_filter}%")
-
-    where_clause = " AND ".join(filters)
-
-    conn = get_db()
-    if not conn:
-        flash("Database connection error.", "danger")
-        return redirect(url_for("index"))
-    try:
-        with conn.cursor() as cur:
-            cur.execute(f"SELECT COUNT(*) FROM trades WHERE {where_clause}", values)
-            total_trades = cur.fetchone()[0]
-
-            cur.execute(f"""
-                SELECT id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, option_contract
-                FROM trades
-                WHERE {where_clause}
-                ORDER BY timestamp DESC
-                LIMIT %s OFFSET %s
-            """, values + [per_page, offset])
-            trades = cur.fetchall()
-    except Exception as e:
-        current_app.logger.error(f"Error fetching past trades: {e}")
-        flash("Error fetching trades.", "danger")
-        return redirect(url_for("index"))
-    finally:
-        conn.close()
-
-    total_pages = (total_trades + per_page - 1) // per_page
-    return render_template(
-        "past_trades.html",
-        trades=trades,
-        page=page,
-        total_pages=total_pages,
-        symbol=symbol,
-        from_date=from_date,
-        to_date=to_date,
-        min_pnl=min_pnl,
-        max_pnl=max_pnl,
-        strategy=strategy_filter,
-    )
-
-
-@app.route("/export")
-@login_required
-def export_csv():
-    conn = get_db()
-    if not conn:
-        flash("Database connection error.", "danger")
-        return redirect(url_for("index"))
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, option_contract
-                FROM trades WHERE user_id = %s
-            """, (current_user.id,))
-            trades = cur.fetchall()
-    except Exception as e:
-        current_app.logger.error(f"Error exporting trades: {e}")
-        flash("Error exporting trades.", "danger")
-        return redirect(url_for("index"))
-    finally:
-        conn.close()
-
-    output = StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["Symbol", "Entry", "Exit", "Qty", "Currency", "Reason", "Timestamp", "PnL", "Strategy", "Option Contract"])
-    for trade in trades:
-        writer.writerow(trade)
-
-    output.seek(0)
-    return Response(output, mimetype="text/csv",
-                    headers={"Content-Disposition": "attachment; filename=trades.csv"})
 
 
 @app.route("/dashboard")
@@ -277,11 +189,10 @@ def dashboard():
     return render_template("dashboard.html", stats=stats)
 
 
-# Initialize Database
 def init_db():
     conn = get_db()
     if not conn:
-        current_app.logger.error("Failed to initialize database - connection error")
+        current_app.logger.error("Failed to initialize database - connection error.")
         return
     try:
         with conn.cursor() as cur:
