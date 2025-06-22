@@ -3,6 +3,12 @@
 {% block title %}Home - My Trading Journal{% endblock %}
 
 {% block content %}
-<h1 class="text-3xl font-bold">Welcome, {{ username }}!</h1>
-<p class="mt-3">Use the navigation above to manage your trades and review your stats.</p>
+<div class="bg-white rounded-xl p-8 shadow-lg max-w-md w-full text-center">
+  <h1 class="text-3xl font-bold">Welcome, {{ username }}!</h1>
+  <p class="mt-3 text-gray-600">Use the navigation above to manage your trades, review statistics, or export your data. 👇</p>
+  <div class="mt-4 space-x-3">
+    <a href="{{ url_for('dashboard') }}" class="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-2">View Dashboard</a>
+    <a href="{{ url_for('past_trades') }}" class="bg-gray-600 hover:bg-gray-700 text-white rounded px-4 py-2">View Past Trades</a>
+  </div>
+</div>
 {% endblock %}
