@@ -1,38 +1,29 @@
-from flask import (
-    Flask,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    flash,
-    session,
-    Response,
-    current_app,
-)
-from flask_login import (
-    LoginManager,
-    login_user,
-    login_required,
-    logout_user,
-    UserMixin,
-    current_user,
-)
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+from flask import Flask, render_template, request, redirect, url_for, session, Response, flash, current_app
+from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg
-import os
+import traceback
 import csv
 from io import StringIO
 from datetime import datetime
-import traceback
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "your_secret_key_here")
+
+# Use secret key from environment
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "fallback_secret_key")
+
+# Use database URL from environment
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
-
-DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 def get_db():
@@ -114,17 +105,13 @@ def register():
             return redirect(url_for("register"))
         try:
             with conn.cursor() as cur:
-                cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)",
-                            (username, password_hash))
+                cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password_hash))
             conn.commit()
             flash("Registration successful! Please login.", "success")
             return redirect(url_for("login"))
         except Exception as e:
             conn.rollback()
-            if "unique" in str(e).lower():
-                flash("Username already taken. Try a different one.", "danger")
-            else:
-                flash(f"Error creating account: {e}", "danger")
+            flash(f"Username already exists or error: {e}", "danger")
             return redirect(url_for("register"))
         finally:
             conn.close()
@@ -141,7 +128,7 @@ def login():
         if user and check_password_hash(user.password, password):
             login_user(user)
             return redirect(url_for("index"))
-        flash("Invalid username or password", "danger")
+        flash("Invalid credentials", "danger")
         return redirect(url_for("login"))
     return render_template("login.html")
 
@@ -152,6 +139,187 @@ def logout():
     logout_user()
     flash("Logged out successfully.", "success")
     return redirect(url_for("login"))
+
+
+@app.route("/log", methods=["GET", "POST"])
+@login_required
+def log_trade():
+    if request.method == "POST":
+        market_type = request.form.get("market_type", "").strip()
+        entry = request.form.get("entry", "0")
+        exit_price = request.form.get("exit", "0")
+        qty = request.form.get("qty", "0")
+        currency = request.form.get("currency", "").strip()
+        reason = request.form.get("reason", "").strip()
+        strategy = request.form.get("strategy") or None
+        option_contract = request.form.get("option_contract") or None
+
+        try:
+            entry = float(entry)
+            exit_price = float(exit_price)
+            qty = int(qty)
+        except ValueError:
+            flash("Invalid entry, exit, or quantity. Ensure they are numbers.", "danger")
+            return redirect(url_for("log_trade"))
+
+        if entry <= 0 or exit_price <= 0 or qty <= 0:
+            flash("Please enter valid (greater than 0) entry, exit, and quantity values.", "danger")
+            return redirect(url_for("log_trade"))
+
+        symbol = request.form.get("symbol") or request.form.get("other_symbol") or ""
+        symbol = symbol.strip()
+        if not symbol:
+            flash("Please provide a valid symbol for the trade.", "danger")
+            return redirect(url_for("log_trade"))
+
+        timestamp = datetime.now()
+        pnl = round((exit_price - entry) * qty, 2)
+
+        conn = get_db()
+        if not conn:
+            flash("Database connection error.", "danger")
+            return redirect(url_for("log_trade"))
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO trades (
+                        user_id, market_type, symbol, entry, exit, qty, currency,
+                        reason, timestamp, pnl, strategy, option_contract
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    current_user.id,
+                    market_type,
+                    symbol,
+                    entry,
+                    exit_price,
+                    qty,
+                    currency,
+                    reason,
+                    timestamp,
+                    pnl,
+                    strategy,
+                    option_contract
+                ))
+            conn.commit()
+            flash("Trade logged successfully!", "success")
+        except Exception as e:
+            traceback_str = traceback.format_exc()
+            current_app.logger.error(f"Error inserting trade: {e}\n{traceback_str}")
+            conn.rollback()
+            flash(f"Error inserting trade: {e}", "danger")
+        finally:
+            conn.close()
+
+        return redirect(url_for("past_trades"))
+    return render_template("log_trade.html")
+
+
+@app.route("/past")
+@login_required
+def past_trades():
+    symbol = request.args.get("symbol")
+    from_date = request.args.get("from_date")
+    to_date = request.args.get("to_date")
+    min_pnl = request.args.get("min_pnl")
+    max_pnl = request.args.get("max_pnl")
+    strategy_filter = request.args.get("strategy")
+    page = int(request.args.get("page", 1))
+    per_page = 10
+    offset = (page - 1) * per_page
+
+    filters = ["user_id = %s"]
+    values = [current_user.id]
+
+    if symbol:
+        filters.append("symbol ILIKE %s")
+        values.append(f"%{symbol}%")
+    if from_date:
+        filters.append("timestamp::date >= %s")
+        values.append(from_date)
+    if to_date:
+        filters.append("timestamp::date <= %s")
+        values.append(to_date)
+    if min_pnl:
+        filters.append("pnl >= %s")
+        values.append(min_pnl)
+    if max_pnl:
+        filters.append("pnl <= %s")
+        values.append(max_pnl)
+    if strategy_filter:
+        filters.append("strategy ILIKE %s")
+        values.append(f"%{strategy_filter}%")
+
+    where_clause = " AND ".join(filters)
+
+    conn = get_db()
+    if not conn:
+        flash("Database connection error.", "danger")
+        return redirect(url_for("index"))
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT COUNT(*) FROM trades WHERE {where_clause}", values)
+            total_trades = cur.fetchone()[0]
+
+            cur.execute(f"""
+                SELECT id, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, option_contract
+                FROM trades
+                WHERE {where_clause}
+                ORDER BY timestamp DESC
+                LIMIT %s OFFSET %s
+            """, values + [per_page, offset])
+            trades = cur.fetchall()
+    except Exception as e:
+        current_app.logger.error(f"Error fetching past trades: {e}")
+        flash("Error fetching trades.", "danger")
+        return redirect(url_for("index"))
+    finally:
+        conn.close()
+
+    total_pages = (total_trades + per_page - 1) // per_page
+    return render_template(
+        "past_trades.html",
+        trades=trades,
+        page=page,
+        total_pages=total_pages,
+        symbol=symbol,
+        from_date=from_date,
+        to_date=to_date,
+        min_pnl=min_pnl,
+        max_pnl=max_pnl,
+        strategy=strategy_filter,
+    )
+
+
+@app.route("/export")
+@login_required
+def export_csv():
+    conn = get_db()
+    if not conn:
+        flash("Database connection error.", "danger")
+        return redirect(url_for("index"))
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, option_contract
+                FROM trades WHERE user_id = %s
+            """, (current_user.id,))
+            trades = cur.fetchall()
+    except Exception as e:
+        current_app.logger.error(f"Error exporting trades: {e}")
+        flash("Error exporting trades.", "danger")
+        return redirect(url_for("index"))
+    finally:
+        conn.close()
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Symbol", "Entry", "Exit", "Qty", "Currency", "Reason", "Timestamp", "PnL", "Strategy", "Option Contract"])
+    for trade in trades:
+        writer.writerow(trade)
+
+    output.seek(0)
+    return Response(output, mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=trades.csv"})
 
 
 @app.route("/dashboard")
@@ -192,7 +360,7 @@ def dashboard():
 def init_db():
     conn = get_db()
     if not conn:
-        current_app.logger.error("Failed to initialize database - connection error.")
+        current_app.logger.error("Failed to initialize database - connection error")
         return
     try:
         with conn.cursor() as cur:
