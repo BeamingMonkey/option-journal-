@@ -1,14 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Welcome - My Trading Journal{% endblock %}
+{% block title %}Home - My Trading Journal{% endblock %}
 
 {% block content %}
-<div class="bg-white rounded-xl p-8 shadow-lg max-w-xl w-full text-center">
-  <h1 class="text-3xl font-bold text-gray-800">Welcome, {{ username }}!</h1>
-  <p class="text-gray-600 mt-2">Track your trades, analyze your performance, and grow as a trader!</p>
-  <div class="mt-6 space-x-3">
-    <a href="{{ url_for('log_trade') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded px-4 py-2">Log Trade</a>
-    <a href="{{ url_for('dashboard') }}" class="bg-gray-600 hover:bg-gray-700 text-white rounded px-4 py-2">View Dashboard</a>
-  </div>
-</div>
+<h1 class="text-3xl font-bold">Welcome, {{ username }}!</h1>
+<p class="mt-3">Use the navigation above to manage your trades and review your stats.</p>
 {% endblock %}
