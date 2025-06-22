@@ -24,8 +24,8 @@
     </div>
   </div>
   <div class="text-center mt-6">
-    <a href="{{ url_for('log_trade') }}" class="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-2">Log New Trade</a>
     <a href="{{ url_for('past_trades') }}" class="bg-gray-600 hover:bg-gray-700 text-white rounded px-4 py-2">View Past Trades</a>
+    <a href="{{ url_for('export_csv') }}" class="bg-green-600 hover:bg-green-700 text-white rounded px-4 py-2">Export Trades</a>
   </div>
 </div>
 {% endblock %}
