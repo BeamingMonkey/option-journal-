@@ -6,6 +6,7 @@ import os
 import csv
 from io import StringIO
 from datetime import datetime
+import traceback
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "your_secret_key_here")
@@ -62,7 +63,7 @@ def index():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        username = request.form["username"]
+        username = request.form["username"].strip()
         password = request.form["password"]
         confirm = request.form["confirm"]
 
@@ -86,7 +87,7 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
+        username = request.form["username"].strip()
         password = request.form["password"]
 
         user = User.find_by_username(username)
@@ -106,32 +107,46 @@ def logout():
 @login_required
 def log_trade():
     if request.method == "POST":
-        market_type = request.form.get("market_type")
-        entry = float(request.form["entry"])
-        exit_price = float(request.form["exit"])
-        qty = int(request.form["qty"])
-        currency = request.form["currency"]
-        reason = request.form["reason"]
+        market_type = request.form.get("market_type", "").strip()
+        entry = request.form.get("entry", "0")
+        exit_price = request.form.get("exit", "0")
+        qty = request.form.get("qty", "0")
+        currency = request.form.get("currency", "").strip()
+        reason = request.form.get("reason", "").strip()
         strategy = request.form.get("strategy") or None
         option_contract = request.form.get("option_contract") or None
+
+        # Validate inputs
+        try:
+            entry = float(entry)
+            exit_price = float(exit_price)
+            qty = int(qty)
+        except ValueError:
+            flash("Invalid entry, exit, or quantity. Ensure they are numbers.", "danger")
+            return redirect(url_for("log_trade"))
+
+        if entry <= 0 or exit_price <= 0 or qty <= 0:
+            flash("Please enter valid (greater than 0) entry, exit, and quantity values.", "danger")
+            return redirect(url_for("log_trade"))
+
+        # Get symbol
+        symbol = request.form.get("symbol") or request.form.get("other_symbol") or ""
+        symbol = symbol.strip()
+        if not symbol:
+            flash("Please provide a valid symbol for the trade.", "danger")
+            return redirect(url_for("log_trade"))
+
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         pnl = round((exit_price - entry) * qty, 2)
-
-        # Choose symbol based on market_type
-        if market_type == "Index":
-            symbol = request.form.get("symbol")
-        elif market_type == "Option":
-            symbol = request.form.get("symbol")  # You can adapt if needed
-        else:
-            symbol = request.form.get("other_symbol")
 
         conn = get_db()
         try:
             with conn.cursor() as cur:
                 cur.execute("""
-                    INSERT INTO trades 
-                    (user_id, market_type, symbol, entry, exit, qty, currency, reason, timestamp, pnl, strategy, option_contract) 
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
+                    INSERT INTO trades (
+                        user_id, market_type, symbol, entry, exit, qty, currency,
+                        reason, timestamp, pnl, strategy, option_contract
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     current_user.id,
                     market_type,
@@ -149,11 +164,13 @@ def log_trade():
             conn.commit()
             flash("Trade logged successfully!", "success")
         except Exception as e:
+            traceback_str = traceback.format_exc()
+            app.logger.error(f"Error inserting trade: {e}\n{traceback_str}")
             conn.rollback()
-            app.logger.error(f"Error inserting trade: {e}")
             flash(f"Error inserting trade: {e}", "danger")
         finally:
             conn.close()
+
         return redirect(url_for("past_trades"))
     return render_template("log_trade.html")
 
@@ -210,16 +227,18 @@ def past_trades():
     conn.close()
 
     total_pages = (total_trades + per_page - 1) // per_page
-    return render_template("past_trades.html",
-                           trades=trades,
-                           page=page,
-                           total_pages=total_pages,
-                           symbol=symbol,
-                           from_date=from_date,
-                           to_date=to_date,
-                           min_pnl=min_pnl,
-                           max_pnl=max_pnl,
-                           strategy=strategy_filter)
+    return render_template(
+        "past_trades.html",
+        trades=trades,
+        page=page,
+        total_pages=total_pages,
+        symbol=symbol,
+        from_date=from_date,
+        to_date=to_date,
+        min_pnl=min_pnl,
+        max_pnl=max_pnl,
+        strategy=strategy_filter,
+    )
 
 @app.route("/export")
 @login_required
