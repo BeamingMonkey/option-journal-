@@ -2,24 +2,37 @@
 @login_required
 def log_trade():
     if request.method == "POST":
-        market_type = request.form.get("market_type")
-        entry = float(request.form["entry"])
-        exit_price = float(request.form["exit"])
-        qty = int(request.form["qty"])
-        currency = request.form["currency"]
-        reason = request.form["reason"]
+        # Extract and validate form inputs
+        market_type = request.form.get("market_type", "").strip()
+        entry = request.form.get("entry", "0")
+        exit_price = request.form.get("exit", "0")
+        qty = request.form.get("qty", "0")
+        currency = request.form.get("currency", "").strip()
+        reason = request.form.get("reason", "").strip()
         strategy = request.form.get("strategy") or None
         option_contract = request.form.get("option_contract") or None
+
+        try:
+            entry = float(entry)
+            exit_price = float(exit_price)
+            qty = int(qty)
+        except ValueError:
+            flash("Invalid entry, exit, or quantity. Ensure they are numbers.", "danger")
+            return redirect(url_for("log_trade"))
+
+        if entry <= 0 or exit_price <= 0 or qty <= 0:
+            flash("Please enter valid (greater than 0) entry, exit, and quantity values.", "danger")
+            return redirect(url_for("log_trade"))
+
+        # Determine symbol
+        symbol = request.form.get("symbol") or request.form.get("other_symbol") or ""
+        symbol = symbol.strip()
+        if not symbol:
+            flash("Please provide a valid symbol for the trade.", "danger")
+            return redirect(url_for("log_trade"))
+
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         pnl = round((exit_price - entry) * qty, 2)
-
-        # Choose symbol based on market_type
-        if market_type == "Index":
-            symbol = request.form.get("symbol")  # Index symbol
-        elif market_type == "Option":
-            symbol = request.form.get("symbol")  # You can still use this for index options
-        else:
-            symbol = request.form.get("other_symbol")  # Stock, Forex, or Crypto symbol
 
         conn = get_db()
         try:
@@ -44,10 +57,14 @@ def log_trade():
                 ))
             conn.commit()
             flash("Trade logged successfully!", "success")
+
         except Exception as e:
+            import traceback
+            traceback_str = traceback.format_exc()
+            app.logger.error(f"Error inserting trade: {e}\n{traceback_str}")
             conn.rollback()
-            app.logger.error(f"Error inserting trade: {e}")
             flash(f"Error inserting trade: {e}", "danger")
+
         finally:
             conn.close()
 
