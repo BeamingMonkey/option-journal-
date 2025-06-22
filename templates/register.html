@@ -11,10 +11,8 @@
     {% if messages %}
       <div class="mb-4">
         {% for category, message in messages %}
-          <div class="p-2 rounded mb-2 text-white 
-            {% if category == 'danger' %} bg-red-500 
-            {% elif category == 'success' %} bg-green-500 
-            {% else %} bg-gray-500 {% endif %}">
+          <div class="p-2 rounded mb-2 text-white
+            {% if category == 'danger' %}bg-red-500{% elif category == 'success' %}bg-green-500{% else %}bg-gray-500{% endif %}">
             {{ message }}
           </div>
         {% endfor %}
@@ -25,15 +23,15 @@
   <form method="POST" class="mt-4 space-y-4">
     <div>
       <label class="block text-gray-600 font-semibold">Username</label>
-      <input name="username" required class="w-full p-2 rounded border mt-1">
+      <input name="username" required class="w-full p-2 rounded border mt-1" autocomplete="username" autofocus>
     </div>
     <div>
       <label class="block text-gray-600 font-semibold">Password</label>
-      <input type="password" name="password" required class="w-full p-2 rounded border mt-1">
+      <input type="password" name="password" required class="w-full p-2 rounded border mt-1" autocomplete="new-password">
     </div>
     <div>
       <label class="block text-gray-600 font-semibold">Confirm Password</label>
-      <input type="password" name="confirm" required class="w-full p-2 rounded border mt-1">
+      <input type="password" name="confirm" required class="w-full p-2 rounded border mt-1" autocomplete="new-password">
     </div>
     <div class="text-center">
       <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded px-4 py-2">Register</button>
