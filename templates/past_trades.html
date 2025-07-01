@@ -1,138 +1,79 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Past Trades - My Trading Journal</title>
-    <style>
-        body {
-            background: #f5f7fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+{% extends "base.html" %}
+{% block title %}Past Trades{% endblock %}
+{% block content %}
+<h2>Past Trades</h2>
 
-        header {
-            background-color: #3b82f6;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            font-size: 22px;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
+<form method="GET" class="row g-3 mb-4">
+  <div class="col-md-2">
+    <input type="text" name="symbol" placeholder="Symbol" value="{{ symbol or '' }}" class="form-control" />
+  </div>
+  <div class="col-md-2">
+    <input type="date" name="from_date" value="{{ from_date or '' }}" class="form-control" />
+  </div>
+  <div class="col-md-2">
+    <input type="date" name="to_date" value="{{ to_date or '' }}" class="form-control" />
+  </div>
+  <div class="col-md-2">
+    <input type="number" step="0.01" name="min_pnl" placeholder="Min P&L" value="{{ min_pnl or '' }}" class="form-control" />
+  </div>
+  <div class="col-md-2">
+    <input type="number" step="0.01" name="max_pnl" placeholder="Max P&L" value="{{ max_pnl or '' }}" class="form-control" />
+  </div>
+  <div class="col-md-2">
+    <select name="strategy" class="form-select">
+      <option value="">All Strategies</option>
+      {% for s in ["Breakout", "Pullback", "Scalping", "Swing", "Position"] %}
+      <option value="{{ s }}" {% if strategy == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-12">
+    <button class="btn btn-primary mt-2" type="submit">Filter</button>
+  </div>
+</form>
 
-        .container {
-            flex: 1;
-            max-width: 1100px;
-            margin: auto;
-            background: #fff;
-            padding: 30px 40px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-            border-radius: 10px;
-            margin-top: 20px;
-            margin-bottom: 20px;
-        }
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Timestamp</th>
+      <th>Symbol</th>
+      <th>Entry</th>
+      <th>Exit</th>
+      <th>Qty</th>
+      <th>Currency</th>
+      <th>Strategy</th>
+      <th>Reason</th>
+      <th>P&L</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for trade in trades %}
+    <tr>
+      <td>{{ trade.timestamp }}</td>
+      <td>{{ trade.symbol }}</td>
+      <td>{{ trade.entry }}</td>
+      <td>{{ trade.exit }}</td>
+      <td>{{ trade.qty }}</td>
+      <td>{{ trade.currency }}</td>
+      <td>{{ trade.strategy }}</td>
+      <td>{{ trade.reason }}</td>
+      <td>{{ trade.pnl }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9" class="text-center">No trades found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
 
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            font-weight: 700;
-            color: #222;
-        }
-
-        a {
-            display: inline-block;
-            margin-bottom: 20px;
-            font-weight: 600;
-            color: #3b82f6;
-            text-decoration: none;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 14px 12px;
-            border-bottom: 1.5px solid #ddd;
-            text-align: left;
-        }
-
-        th {
-            background-color: #3b82f6;
-            color: white;
-            font-weight: 700;
-        }
-
-        tr:nth-child(even) {
-            background-color: #f9fbff;
-        }
-
-        tr:hover {
-            background-color: #e1efff;
-        }
-
-        .pnl-positive {
-            color: green;
-            font-weight: bold;
-        }
-
-        .pnl-negative {
-            color: red;
-            font-weight: bold;
-        }
-
-        footer {
-            background-color: #e2e8f0;
-            text-align: center;
-            padding: 12px;
-            font-size: 14px;
-            font-weight: 500;
-            color: #555;
-        }
-    </style>
-</head>
-<body>
-    <header>My Trading Journal</header>
-
-    <div class="container">
-        <h1>Past Trades</h1>
-        <a href="/">← Log New Trade</a>
-        <table>
-            <thead>
-                <tr>
-                    <th>Symbol</th>
-                    <th>Entry</th>
-                    <th>Exit</th>
-                    <th>Qty</th>
-                    <th>Currency</th>
-                    <th>Reason</th>
-                    <th>Timestamp</th>
-                    <th>PnL</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for t in trades %}
-                <tr>
-                    <td>{{ t[0] }}</td>
-                    <td>{{ t[1] }}</td>
-                    <td>{{ t[2] }}</td>
-                    <td>{{ t[5] }}</td>
-                    <td>{{ t[6] }}</td>
-                    <td>{{ t[3] }}</td>
-                    <td>{{ t[4] }}</td>
-                    <td class="{{ 'pnl-positive' if t[7] >= 0 else 'pnl-negative' }}">{{ "%.2f"|format(t[7]) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <footer>All rights reserved © Buildwitharunraj</footer>
-</body>
-</html>
+{% if total_pages > 1 %}
+<nav aria-label="Page navigation">
+  <ul class="pagination">
+    {% for p in range(1, total_pages + 1) %}
+    <li class="page-item {% if p == page %}active{% endif %}">
+      <a class="page-link" href="{{ url_for('past_trades', page=p, symbol=symbol, from_date=from_date, to_date=to_date, min_pnl=min_pnl, max_pnl=max_pnl, strategy=strategy) }}">{{ p }}</a>
+    </li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

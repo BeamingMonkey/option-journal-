@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h2>Dashboard</h2>
+<ul class="list-group">
+  <li class="list-group-item">Total P&L: <strong>{{ stats.total_pnl or 0 }}</strong></li>
+  <li class="list-group-item">Best Trade: <strong>{{ stats.best_trade or 0 }}</strong></li>
+  <li class="list-group-item">Worst Trade: <strong>{{ stats.worst_trade or 0 }}</strong></li>
+  <li class="list-group-item">Total Trades: <strong>{{ stats.total_trades or 0 }}</strong></li>
+</ul>
+{% endblock %}
