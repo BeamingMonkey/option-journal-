@@ -1,5 +1,3 @@
-Sure! Here’s the full README.md content for you to copy all at once:
-
 # Option Journal - Trading Journal Web App
 
 A Flask web application to log and track your trading activity with user authentication and SQLite backend.
